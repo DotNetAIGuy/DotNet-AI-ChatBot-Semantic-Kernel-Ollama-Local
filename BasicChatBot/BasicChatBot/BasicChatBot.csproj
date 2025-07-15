@@ -1,16 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+    <!-- Target .NET 9 for the latest features and performance improvements -->
     <TargetFramework>net9.0</TargetFramework>
+    
+    <!-- Enable nullable reference types for better code safety -->
     <Nullable>enable</Nullable>
+    
+    <!-- Enable implicit using directives to reduce boilerplate code -->
     <ImplicitUsings>enable</ImplicitUsings>
+    
+    <!-- Suppress experimental API warnings for Ollama connector -->
+    <!-- The Ollama connector is currently in alpha but stable for our use case -->
     <NoWarn>SKEXP0070</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Reference to the Blazor WebAssembly client project -->
     <ProjectReference Include="..\BasicChatBot.Client\BasicChatBot.Client.csproj" />
+    
+    <!-- Blazor WebAssembly server hosting support -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.7" />
+    
+    <!-- Microsoft Semantic Kernel - AI orchestration framework -->
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.60.0" />
+    
+    <!-- Ollama connector for Semantic Kernel - enables local AI integration -->
+    <!-- Note: This is currently in alpha release -->
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.60.0-alpha" />
   </ItemGroup>
 
