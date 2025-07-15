@@ -1,0 +1,172 @@
+﻿@page "/"
+@using BasicChatBot.Services
+@inject ChatService ChatService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Sarcastic AI Chat</PageTitle>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>🤖 Sarcastic AI Assistant</h2>
+        @if (messages.Any())
+        {
+            <button @onclick="ClearChat" class="btn btn-light btn-sm ms-auto">
+                🗑️ Clear Chat
+            </button>
+        }
+    </div>
+
+    <div class="chat-messages" @ref="messagesContainer">
+        @if (!messages.Any())
+        {
+            <div class="welcome-message">
+                <p>👋 Hello there! I'm your delightfully sarcastic AI assistant.</p>
+                <p>Ask me anything, and I'll try to help while maintaining my charming attitude. 😏</p>
+            </div>
+        }
+
+        @foreach (var message in messages)
+        {
+            <div class="message @(message.IsUser ? "user-message" : "ai-message")">
+                <div class="message-avatar">
+                    @if (message.IsUser)
+                    {
+                        <span>👤</span>
+                    }
+                    else
+                    {
+                        <span>🤖</span>
+                    }
+                </div>
+                <div class="message-content">
+                    <div class="message-text">@message.Content</div>
+                    <div class="message-time">@message.Timestamp.ToString("HH:mm")</div>
+                </div>
+            </div>
+        }
+
+        @if (isLoading)
+        {
+            <div class="message ai-message">
+                <div class="message-avatar">
+                    <span>🤖</span>
+                </div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="chat-input">
+        <div class="input-group">
+            <input @ref="messageInput"
+                   @bind="currentMessage" 
+                   @bind:event="oninput"
+                   @onkeypress="HandleKeyPress" 
+                   placeholder="Type your message here..." 
+                   disabled="@isLoading" 
+                   class="form-control" />
+            <button @onclick="SendMessage" 
+                    disabled="@(isLoading || string.IsNullOrWhiteSpace(currentMessage))" 
+                    class="btn btn-primary">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                }
+                else
+                {
+                    <span>Send</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ChatMessage> messages = new();
+    private string currentMessage = "";
+    private bool isLoading = false;
+    private ElementReference messagesContainer;
+    private ElementReference messageInput;
+
+    public class ChatMessage
+    {
+        public string Content { get; set; } = "";
+        public bool IsUser { get; set; }
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(currentMessage) || isLoading)
+            return;
+
+        var userMessage = currentMessage.Trim();
+        currentMessage = "";
+
+        // Add user message
+        messages.Add(new ChatMessage { Content = userMessage, IsUser = true });
+        isLoading = true;
+        StateHasChanged();
+
+        await ScrollToBottom();
+
+        try
+        {
+            // Get AI response
+            var response = await ChatService.GetResponseAsync(userMessage);
+            
+            // Add AI response
+            messages.Add(new ChatMessage { Content = response, IsUser = false });
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage 
+            { 
+                Content = $"Oops! Something went wrong: {ex.Message}", 
+                IsUser = false 
+            });
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+            await ScrollToBottom();
+            await FocusInput();
+        }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await Task.Delay(100); // Small delay to ensure DOM is updated
+        await JS.InvokeVoidAsync("scrollToBottom", messagesContainer);
+    }
+
+    private async Task FocusInput()
+    {
+        await Task.Delay(100); // Small delay to ensure DOM is updated
+        await messageInput.FocusAsync();
+    }
+
+    private async Task ClearChat()
+    {
+        messages.Clear();
+        ChatService.ClearHistory();
+        StateHasChanged();
+        await FocusInput();
+    }
+}
